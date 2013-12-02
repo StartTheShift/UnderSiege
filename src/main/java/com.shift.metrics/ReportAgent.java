@@ -3,6 +3,7 @@ package com.shift.metrics;
 import java.io.IOException;
 import java.lang.instrument.Instrumentation;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 import com.yammer.metrics.reporting.ConsoleReporter;
@@ -13,12 +14,17 @@ public class ReportAgent
 {
     public static void premain(String agentArgs, Instrumentation inst) throws IOException
     {
-        String host = InetAddress.getLocalHost().getHostName();
+        // comma separated list of
+        String host;
+        try {
+            host = InetAddress.getLocalHost().getHostName();
+        }
+        catch (UnknownHostException e) {
+            host = "unknown-host";
+        }
 
-
-        //ConsoleReporter.enable(5, TimeUnit.SECONDS);
-        StatsdReporter reporter = new StatsdReporter(agentArgs, 8125);
-        reporter.start(1, TimeUnit.SECONDS);
+        StatsdReporter reporter = new StatsdReporter(host, 8125, agentArgs);
+        reporter.start(10, TimeUnit.SECONDS);
 
         System.out.println("STATSD STARTING sending to " + agentArgs + " with host prefix " + host);
 
@@ -27,7 +33,7 @@ public class ReportAgent
     {
         System.out.println("Main running.");
         try {
-            Thread.sleep(10000);
+            Thread.sleep(60000);
         } catch (InterruptedException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
