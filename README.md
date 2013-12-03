@@ -3,13 +3,13 @@ Cassandra Statsd Reporting Tool
 
 REQUIREMENTS
 =============
-Maven
-JDK
+* Maven
+* Java
 
 BUILD
 ======
 
-mvn package
+`mvn package`
 
 It may be necessary to build the jar against the same version of the metrics library being used in Cassandra.  
 
