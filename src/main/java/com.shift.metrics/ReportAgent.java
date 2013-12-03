@@ -23,7 +23,7 @@ public class ReportAgent
             host = "unknown-host";
         }
 
-        StatsdReporter reporter = new StatsdReporter(host, 8125, agentArgs);
+        StatsdReporter reporter = new StatsdReporter(agentArgs, 8125, host);
         reporter.start(10, TimeUnit.SECONDS);
 
         System.out.println("STATSD STARTING sending to " + agentArgs + " with host prefix " + host);
