@@ -60,7 +60,6 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
 
     @Override
     public void run() {
-        System.out.println("Running");
         try {
             final long epoch = clock.time() / 1000;
             if (this.printVMMetrics) {
@@ -156,7 +155,7 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
 
     @Override
     public void processMeter(MetricName name, Metered meter, Long epoch) throws Exception {
-        System.out.printf("Printing process meter %s %d\n", name.getName(), meter.count());
+//        System.out.printf("Printing process meter %s %d\n", name.getName(), meter.count());
 
 //
     }
@@ -168,19 +167,20 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
 
     @Override
     public void processHistogram(MetricName name, Histogram histogram, Long epoch) throws Exception {
-        System.out.printf("process histogram %s %f\n", name.getName(), histogram.mean());
+//        System.out.printf("process histogram %s %f\n", name.getName(), histogram.mean());
     }
 
     @Override
     public void processTimer(MetricName name, Timer timer, Long context) throws Exception {
-        System.out.printf("timer %s\n", name.getName());
+//        System.out.printf("timer %s\n", name.getName());
         //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     public void processGauge(MetricName name, Gauge<?> gauge, Long context) throws Exception {
         //To change body of implemented methods use File | Settings | File Templates.
-        System.out.printf("gauge %s %s", name.getName(), gauge.toString());
+//        System.out.printf("gauge %s %s\n", name.getName(), gauge.toString());
+        statsd.gauge(name.getName(), gauge.hashCode());
     }
 
 

@@ -24,7 +24,7 @@ public class ReportAgent
         }
 
         StatsdReporter reporter = new StatsdReporter(host, 8125, agentArgs);
-        reporter.start(10, TimeUnit.SECONDS);
+        reporter.start(1, TimeUnit.SECONDS);
 
         System.out.println("STATSD STARTING sending to " + agentArgs + " with host prefix " + host);
 
