@@ -1,4 +1,4 @@
-package com.shift.metrics;
+package com.shift.undersiege;
 
 import java.io.IOException;
 import java.lang.instrument.Instrumentation;
@@ -7,7 +7,7 @@ import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 import com.yammer.metrics.reporting.ConsoleReporter;
-//import com.yammer.metrics.reporting.GraphiteReporter;
+//import com.yammer.com.shift.undersiege.reporting.GraphiteReporter;
 //
 
 public class ReportAgent

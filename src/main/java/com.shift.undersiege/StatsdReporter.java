@@ -17,7 +17,7 @@
     Edited by Jon Haddad at SHIFT to work with
  */
 
-package com.shift.metrics;
+package com.shift.undersiege;
 
 
 import com.timgroup.statsd.NonBlockingStatsDClient;
@@ -146,7 +146,7 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
                         metric.processWith(this, subEntry.getKey(), epoch);
                         //statsd.gauge(subEntry.getKey(), subEntry.getValue().);
                     } catch (Exception ignored) {
-                        LOG.error("Error printing regular metrics:", ignored);
+                        LOG.error("Error printing regular com.shift.undersiege:", ignored);
                     }
                 }
             }

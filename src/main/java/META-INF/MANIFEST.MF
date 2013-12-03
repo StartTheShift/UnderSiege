@@ -1,2 +1,2 @@
 Manifest-Version: 1.0
-Premain-Class: com.shift.metrics.ReportAgent
+Premain-Class: com.shift.undersiege.ReportAgent
