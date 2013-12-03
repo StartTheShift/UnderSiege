@@ -19,7 +19,7 @@ INSTAL
 Toss the appropriate version of statsd library (hopefully in your .m2 folder by now) in your cassandra/lib/ directory.
 Add the following to your cassandra startup script:
 
-`JVM_OPTS="$JVM_OPTS -javaagent:/path/to/built.jar=localhost"
+`JVM_OPTS="$JVM_OPTS -javaagent:/path/to/built.jar=localhost"`
 
 Or whatever path you've decided to put your agent.  
 
