@@ -80,24 +80,25 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
 
     protected void printVmMetrics(long epoch) {
         // Memory
-        statsd.gauge("jvm.memory.totalInitInMB", (int) vm.totalInit() / 1000);
-        statsd.gauge("jvm.memory.totalUsedInMB", (int) vm.totalUsed() / 1000);
+        int div = 1048576;
+        statsd.gauge("jvm.memory.totalInitInMB", (int) vm.totalInit() / div);
+        statsd.gauge("jvm.memory.totalUsedInMB", (int) vm.totalUsed() / div);
 
 //        sendFloat("jvm.memory.totalMax", StatType.GAUGE, vm.totalMax());
 //        sendFloat("jvm.memory.totalCommitted", StatType.GAUGE, vm.totalCommitted());
 //
 //        statsd.gauge("jvm.memory.helpInitInMB", (int) vm.heapInit() / 1000);
-        statsd.gauge("jvm.memory.heapUsedInMB", (int) vm.heapUsed() / 1000);
+        statsd.gauge("jvm.memory.heapUsedInMB", (int) vm.heapUsed() / div);
 
 //        sendFloat("jvm.memory.heapMax", StatType.GAUGE, vm.heapMax());
 //        sendFloat("jvm.memory.heapCommitted", StatType.GAUGE, vm.heapCommitted());
 //
-        statsd.gauge("jvm.memory.heapUsageInMB", (int) vm.heapUsage() / 1000);
+        statsd.gauge("jvm.memory.heapUsageInMB", (int) vm.heapUsage() / div);
 //        sendFloat("jvm.memory.nonHeapUsage", StatType.GAUGE, vm.nonHeapUsage());
 //
         for (Map.Entry<String, Double> pool : vm.memoryPoolUsage().entrySet()) {
 //            sendFloat("jvm.memory.memory_pool_usages." + sanitizeString(pool.getKey()), StatType.GAUGE, pool.getValue());
-            statsd.gauge("jvm.memory.memory_pool_usages." + pool.getKey(), pool.getValue().intValue() / 1000);
+            statsd.gauge("jvm.memory.memory_pool_usages." + pool.getKey(), pool.getValue().intValue() / div);
         }
 
 
