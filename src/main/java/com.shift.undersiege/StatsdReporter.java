@@ -25,16 +25,12 @@ import com.timgroup.statsd.StatsDClient;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.*;
 import com.yammer.metrics.reporting.AbstractPollingReporter;
-import com.yammer.metrics.stats.Snapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.util.Locale;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.TimeUnit;
@@ -49,12 +45,16 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
     protected final Clock clock;
     private MetricPredicate predicate = MetricPredicate.ALL;
 
+    private HashMap<String, Integer> previous_run_times;
+    private HashMap<String, Integer> previous_run_counts;
 
     public StatsdReporter(String host, int port, String prefix) throws IOException {
         super(Metrics.defaultRegistry(), "statsd");
         statsd = new NonBlockingStatsDClient(prefix, host, port);
         vm = VirtualMachineMetrics.getInstance();
         clock = Clock.defaultClock();
+        previous_run_times = new HashMap<String, Integer>();
+        previous_run_counts = new HashMap<String, Integer>();
     }
 
 
@@ -83,52 +83,44 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
         int div = 1048576;
         statsd.gauge("jvm.memory.totalInitInMB", (int) vm.totalInit() / div);
         statsd.gauge("jvm.memory.totalUsedInMB", (int) vm.totalUsed() / div);
-
-//        sendFloat("jvm.memory.totalMax", StatType.GAUGE, vm.totalMax());
-//        sendFloat("jvm.memory.totalCommitted", StatType.GAUGE, vm.totalCommitted());
-//
-//        statsd.gauge("jvm.memory.helpInitInMB", (int) vm.heapInit() / 1000);
         statsd.gauge("jvm.memory.heapUsedInMB", (int) vm.heapUsed() / div);
 
-//        sendFloat("jvm.memory.heapMax", StatType.GAUGE, vm.heapMax());
-//        sendFloat("jvm.memory.heapCommitted", StatType.GAUGE, vm.heapCommitted());
-//
         statsd.gauge("jvm.memory.heapUsageInMB", (int) vm.heapUsage() / div);
-//        sendFloat("jvm.memory.nonHeapUsage", StatType.GAUGE, vm.nonHeapUsage());
-//
+
         for (Map.Entry<String, Double> pool : vm.memoryPoolUsage().entrySet()) {
-//            sendFloat("jvm.memory.memory_pool_usages." + sanitizeString(pool.getKey()), StatType.GAUGE, pool.getValue());
             statsd.gauge("jvm.memory.memory_pool_usages." + pool.getKey(), pool.getValue().intValue() / div);
         }
 
-
-//        // Buffer Pool
-//        final Map<String, VirtualMachineMetrics.BufferPoolStats> bufferPoolStats = vm.getBufferPoolStats();
-//        if (!bufferPoolStats.isEmpty()) {
-//            sendFloat("jvm.buffers.direct.count", StatType.GAUGE, bufferPoolStats.get("direct").getCount());
-//            sendFloat("jvm.buffers.direct.memoryUsed", StatType.GAUGE, bufferPoolStats.get("direct").getMemoryUsed());
-//            sendFloat("jvm.buffers.direct.totalCapacity", StatType.GAUGE, bufferPoolStats.get("direct").getTotalCapacity());
-//
-//            sendFloat("jvm.buffers.mapped.count", StatType.GAUGE, bufferPoolStats.get("mapped").getCount());
-//            sendFloat("jvm.buffers.mapped.memoryUsed", StatType.GAUGE, bufferPoolStats.get("mapped").getMemoryUsed());
-//            sendFloat("jvm.buffers.mapped.totalCapacity", StatType.GAUGE, bufferPoolStats.get("mapped").getTotalCapacity());
-//        }
-//
-//        sendInt("jvm.daemon_thread_count", StatType.GAUGE, vm.daemonThreadCount());
-
-//        sendInt("jvm.thread_count", StatType.GAUGE, vm.threadCount());
-//        sendInt("jvm.uptime", StatType.GAUGE, vm.uptime());
         statsd.gauge("jvm.fd_usage", (int) vm.fileDescriptorUsage());
 
-////
-//        for (Map.Entry<Thread.State, Double> entry : vm.threadStatePercentages().entrySet()) {
-//            sendFloat("jvm.thread-states." + entry.getKey().toString().toLowerCase(), StatType.GAUGE, entry.getValue());
-//        }
-//
-        for (Map.Entry<String, VirtualMachineMetrics.GarbageCollectorStats> entry : vm.garbageCollectors().entrySet()) {
+        for (Map.Entry<String, VirtualMachineMetrics.GarbageCollectorStats> entry : vm.garbageCollectors().entrySet())      {
+            // we only care about the delta times for the GC time and GC runs
+
             final String name = "jvm.gc." + entry.getKey();
-            statsd.gauge(name + ".timeInMS", (int) entry.getValue().getTime(TimeUnit.MILLISECONDS));
-            statsd.gauge(name + ".runs", (int) entry.getValue().getRuns());
+            String stat_name_time = name + ".timeInMS";
+
+            int total_run_time = (int) entry.getValue().getTime(TimeUnit.MILLISECONDS);
+            Integer previous_total_run_time = previous_run_times.get(stat_name_time);
+
+            if (previous_total_run_time == null) {
+                previous_total_run_time = 0;
+            }
+            int delta_run_time = total_run_time - previous_total_run_time;
+            previous_run_times.put(stat_name_time, total_run_time);
+
+            statsd.gauge(stat_name_time, delta_run_time);
+            String stat_run_count = name + ".runs";
+
+            int total_runs = (int) entry.getValue().getRuns();
+
+            Integer previous_total_runs = previous_run_counts.get(stat_run_count);
+
+            if(previous_total_runs == null) {
+                previous_total_runs = 0;
+            }
+
+            statsd.gauge(stat_run_count, total_runs - previous_total_runs);
+            previous_run_counts.put(stat_run_count, total_runs);
         }
     }
 
