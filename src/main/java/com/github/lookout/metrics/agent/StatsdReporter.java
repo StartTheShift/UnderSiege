@@ -14,10 +14,10 @@
  *   limitations under the License.
  */
 /**
-    Edited by Jon Haddad at SHIFT to work with
+ Edited by Jon Haddad at SHIFT to work with
  */
 
-package com.shift.undersiege;
+package com.github.lookout.metrics.agent;
 
 
 import com.timgroup.statsd.NonBlockingStatsDClient;
@@ -28,9 +28,8 @@ import com.yammer.metrics.reporting.AbstractPollingReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.TimeUnit;
@@ -40,17 +39,19 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
     private static final Logger LOG = LoggerFactory.getLogger(StatsdReporter.class);
 
     protected final VirtualMachineMetrics vm;
-    private StatsDClient statsd;
-    private boolean printVMMetrics = false;
+    private final StatsDClient statsd;
     protected final Clock clock;
-    private MetricPredicate predicate = MetricPredicate.ALL;
+    private static final MetricPredicate predicate = MetricPredicate.ALL;
 
-    private HashMap<String, Integer> previous_run_times;
-    private HashMap<String, Integer> previous_run_counts;
+    private boolean reportedStartup = false;
+    private final HostPortInterval hostPortInterval;
+    private final HashMap<String, Integer> previous_run_times;
+    private final HashMap<String, Integer> previous_run_counts;
 
-    public StatsdReporter(String host, int port, String prefix) throws IOException {
+    public StatsdReporter(final HostPortInterval hostPortInterval, final String prefix) {
         super(Metrics.defaultRegistry(), "statsd");
-        statsd = new NonBlockingStatsDClient(prefix, host, port);
+        this.hostPortInterval = hostPortInterval;
+        statsd = new NonBlockingStatsDClient(prefix, hostPortInterval.getHost(), hostPortInterval.getPort());
         vm = VirtualMachineMetrics.getInstance();
         clock = Clock.defaultClock();
         previous_run_times = new HashMap<String, Integer>();
@@ -60,15 +61,13 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
 
     @Override
     public void run() {
+        if (!reportedStartup || LOG.isDebugEnabled()) {
+            LOG.info("Statsd reporting to {}", hostPortInterval);
+            reportedStartup = true;
+        }
         try {
             final long epoch = clock.time() / 1000;
-            if (this.printVMMetrics) {
-                printVmMetrics(epoch);
-            }
-            printRegularMetrics(epoch);
-
-            // Send UDP data
-
+            printMetrics(epoch);
         } catch (Exception e) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Error writing to statsd", e);
@@ -78,7 +77,7 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
         }
     }
 
-    protected void printVmMetrics(long epoch) {
+    protected void printMetrics(long epoch) {
         // Memory
         int div = 1048576;
         statsd.gauge("jvm.memory.totalInitInMB", (int) vm.totalInit() / div);
@@ -93,7 +92,7 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
 
         statsd.gauge("jvm.fd_usage", (int) vm.fileDescriptorUsage());
 
-        for (Map.Entry<String, VirtualMachineMetrics.GarbageCollectorStats> entry : vm.garbageCollectors().entrySet())      {
+        for (Map.Entry<String, VirtualMachineMetrics.GarbageCollectorStats> entry : vm.garbageCollectors().entrySet()) {
             // we only care about the delta times for the GC time and GC runs
 
             final String name = "jvm.gc." + entry.getKey();
@@ -115,31 +114,26 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
 
             Integer previous_total_runs = previous_run_counts.get(stat_run_count);
 
-            if(previous_total_runs == null) {
+            if (previous_total_runs == null) {
                 previous_total_runs = 0;
             }
 
             statsd.gauge(stat_run_count, total_runs - previous_total_runs);
             previous_run_counts.put(stat_run_count, total_runs);
         }
-    }
 
-    protected void printRegularMetrics(long epoch) {
-        printVmMetrics(epoch);
+        final Set<Map.Entry<String, SortedMap<MetricName, Metric>>> entries = getMetricsRegistry().groupedMetrics(predicate).entrySet();
 
-        Set<Map.Entry<String,SortedMap<MetricName,Metric>>> entries = getMetricsRegistry().groupedMetrics(predicate).entrySet();
-
-        for (Map.Entry<String,SortedMap<MetricName,Metric>> entry : entries) {
-            for (Map.Entry<MetricName, Metric> subEntry : entry.getValue().entrySet()) {
+        for (final Map.Entry<String, SortedMap<MetricName, Metric>> entry : entries) {
+            for (final Map.Entry<MetricName, Metric> subEntry : entry.getValue().entrySet()) {
 
                 final Metric metric = subEntry.getValue();
 
                 if (metric != null) {
                     try {
                         metric.processWith(this, subEntry.getKey(), epoch);
-                        //statsd.gauge(subEntry.getKey(), subEntry.getValue().);
-                    } catch (Exception ignored) {
-                        LOG.error("Error printing regular com.shift.undersiege:", ignored);
+                    } catch (final Exception exception) {
+                        LOG.error("Error processing key {}", subEntry.getKey(), exception);
                     }
                 }
             }
@@ -148,9 +142,7 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
 
     @Override
     public void processMeter(MetricName name, Metered meter, Long epoch) throws Exception {
-//        System.out.printf("Printing process meter %s %d\n", name.getName(), meter.count());
-
-//
+        LOG.debug("Meter {} {} skipped", name.getName(), meter.count());
     }
 
     @Override
@@ -160,21 +152,16 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
 
     @Override
     public void processHistogram(MetricName name, Histogram histogram, Long epoch) throws Exception {
-//        System.out.printf("process histogram %s %f\n", name.getName(), histogram.mean());
+        LOG.debug("Histogram {} mean {} skipped", name.getName(), histogram.mean());
     }
 
     @Override
     public void processTimer(MetricName name, Timer timer, Long context) throws Exception {
-//        System.out.printf("timer %s\n", name.getName());
-        //To change body of implemented methods use File | Settings | File Templates.
+        LOG.debug("Timer {} skipped", name.getName());
     }
 
     @Override
     public void processGauge(MetricName name, Gauge<?> gauge, Long context) throws Exception {
-        //To change body of implemented methods use File | Settings | File Templates.
-//        System.out.printf("gauge %s %s\n", name.getName(), gauge.toString());
         statsd.gauge(name.getName(), gauge.hashCode());
     }
-
-
 }
