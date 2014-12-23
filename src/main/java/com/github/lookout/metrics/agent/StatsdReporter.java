@@ -48,10 +48,10 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
     private final HashMap<String, Integer> previous_run_times;
     private final HashMap<String, Integer> previous_run_counts;
 
-    public StatsdReporter(final HostPortInterval hostPortInterval, final String prefix) {
+    public StatsdReporter(final HostPortInterval hostPortInterval, final StatsDClient statsd) {
         super(Metrics.defaultRegistry(), "statsd");
         this.hostPortInterval = hostPortInterval;
-        statsd = new NonBlockingStatsDClient(prefix, hostPortInterval.getHost(), hostPortInterval.getPort());
+        this.statsd = statsd;
         vm = VirtualMachineMetrics.getInstance();
         clock = Clock.defaultClock();
         previous_run_times = new HashMap<String, Integer>();
@@ -77,20 +77,26 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
         }
     }
 
+    private int bytesToMB(double bytes) {
+        return (int)(bytes/(1024*1024));
+    }
+    private int doubleToPct(double pct) {
+        return (int) Math.round(100 * pct);
+    }
+
     protected void printMetrics(long epoch) {
         // Memory
-        int div = 1048576;
-        statsd.gauge("jvm.memory.totalInitInMB", (int) vm.totalInit() / div);
-        statsd.gauge("jvm.memory.totalUsedInMB", (int) vm.totalUsed() / div);
-        statsd.gauge("jvm.memory.heapUsedInMB", (int) vm.heapUsed() / div);
+        statsd.gauge("jvm.memory.totalInitInMB", bytesToMB(vm.totalInit()));
+        statsd.gauge("jvm.memory.totalUsedInMB", bytesToMB(vm.totalUsed()));
+        statsd.gauge("jvm.memory.heapUsedInMB", bytesToMB(vm.heapUsed()));
 
-        statsd.gauge("jvm.memory.heapUsageInMB", (int) vm.heapUsage() / div);
+        statsd.gauge("jvm.memory.heapUsagePercent", doubleToPct(vm.heapUsage()));
 
         for (Map.Entry<String, Double> pool : vm.memoryPoolUsage().entrySet()) {
-            statsd.gauge("jvm.memory.memory_pool_usages." + pool.getKey(), pool.getValue().intValue() / div);
+            statsd.gauge("jvm.memory.memory_pool_usages." + pool.getKey() + "Percent", doubleToPct(pool.getValue()));
         }
 
-        statsd.gauge("jvm.fd_usage", (int) vm.fileDescriptorUsage());
+        statsd.gauge("jvm.fdUsagePercent", doubleToPct(vm.fileDescriptorUsage()));
 
         for (Map.Entry<String, VirtualMachineMetrics.GarbageCollectorStats> entry : vm.garbageCollectors().entrySet()) {
             // we only care about the delta times for the GC time and GC runs
