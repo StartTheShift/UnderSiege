@@ -66,4 +66,11 @@
         </dependency>
 
     </dependencies>
+    <distributionManagement>
+        <repository>
+            <id>bintray-lookout-systems-cassandra-statsd-agent</id>
+            <name>lookout-systems-cassandra-statsd-agent</name>
+            <url>https://api.bintray.com/maven/lookout/systems/cassandra-statsd-agent</url>
+        </repository>
+    </distributionManagement>
 </project>

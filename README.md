@@ -1,8 +1,7 @@
-Under Siege
-===============
-
 Cassandra Statsd Reporting Tool
---------------------------------
+===============================
+
+Thanks to UnderSiege for getting this project off the ground.
 
 REQUIREMENTS
 ----------------
@@ -18,6 +17,10 @@ same exact version. For example, if you have metrics-core-2.2.0.jar,
 make sure pom.xml has <version>2.2.0</version>.
 
 `mvn package`
+
+Alternatively, grab the binary from bintray:
+
+`curl -L http://dl.bintray.com/lookout/systems/com/github/lookout/metrics/agent/1.0/agent-1.0.jar -o agent-1.0.jar`
 
 INSTALL
 ----------------
@@ -40,7 +43,6 @@ The default port is 8125 and the default interval is 10 (seconds); these
 can be omitted. IPV6 is also supported with the following syntax:
 `[2001:db8::1]:8888@300`
 which means connect to 2001:db8::1 on port 8888 every 300 seconds.
-
 
 REPORTING
 ----------------
