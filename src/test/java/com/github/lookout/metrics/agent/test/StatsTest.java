@@ -34,14 +34,14 @@ public class StatsTest {
         byte[] bigMemoryChunk = new byte[102400000]; // 100mb should get us to 1% of heaps up to 10gb
         bigMemoryChunk[4444] = 1;
         sut.run();
-        verify(client).gauge(Matchers.eq("jvm.memory.totalInitInMB"), AdditionalMatchers.gt(0));
-        verify(client).gauge(Matchers.eq("jvm.memory.totalUsedInMB"), AdditionalMatchers.gt(0));
-        verify(client).gauge(Matchers.eq("jvm.memory.heapUsedInMB"), AdditionalMatchers.gt(0));
-        verify(client).gauge(Matchers.eq("jvm.memory.heapUsagePercent"), AdditionalMatchers.gt(0));
-        verify(client, atLeastOnce()).gauge(Matchers.matches("jvm.memory\\.memory_pool_usages\\..*Percent"), AdditionalMatchers.and(AdditionalMatchers.geq(0), AdditionalMatchers.lt(100)));
-        verify(client).gauge(Matchers.eq("jvm.fdUsagePercent"), AdditionalMatchers.gt(0));
-        verify(client, atLeastOnce()).gauge(Matchers.matches("jvm\\.gc\\..*\\.timeInMS"), Matchers.anyInt());
-        verify(client, atLeastOnce()).gauge(Matchers.matches("jvm\\.gc\\..*\\.runs"), Matchers.anyInt());
+        verify(client).gauge(Matchers.eq("jvm.memory.totalInitInMB"), AdditionalMatchers.gt(0L));
+        verify(client).gauge(Matchers.eq("jvm.memory.totalUsedInMB"), AdditionalMatchers.gt(0L));
+        verify(client).gauge(Matchers.eq("jvm.memory.heapUsedInMB"), AdditionalMatchers.gt(0L));
+        verify(client).gauge(Matchers.eq("jvm.memory.heapUsagePercent"), AdditionalMatchers.gt(0L));
+        verify(client, atLeastOnce()).gauge(Matchers.matches("jvm.memory\\.memory_pool_usages\\..*Percent"), AdditionalMatchers.and(AdditionalMatchers.geq(0L), AdditionalMatchers.lt(100L)));
+        verify(client).gauge(Matchers.eq("jvm.fdUsagePercent"), AdditionalMatchers.gt(0L));
+        verify(client, atLeastOnce()).gauge(Matchers.matches("jvm\\.gc\\..*\\.timeInMS"), Matchers.anyLong());
+        verify(client, atLeastOnce()).gauge(Matchers.matches("jvm\\.gc\\..*\\.runs"), Matchers.anyLong());
         assertEquals(bigMemoryChunk[4444], 1);
 
         verifyNoMoreInteractions(client);
@@ -51,14 +51,14 @@ public class StatsTest {
     public void testGCCounts() {
         sut = new StatsdReporter(hostPortInterval, client);
         sut.run();
-        ArgumentCaptor<Integer> countCaptor1 = ArgumentCaptor.forClass(Integer.class);
-        verify(client, atLeastOnce()).gauge(Matchers.matches("jvm\\.gc\\..*\\.timeInMS"), Matchers.anyInt());
+        ArgumentCaptor<Long> countCaptor1 = ArgumentCaptor.forClass(Long.class);
+        verify(client, atLeastOnce()).gauge(Matchers.matches("jvm\\.gc\\..*\\.timeInMS"), Matchers.anyLong());
         verify(client, atLeastOnce()).gauge(Matchers.matches("jvm\\.gc\\..*\\.runs"), countCaptor1.capture());
         reset(client);
         System.gc();
         sut.run();
-        ArgumentCaptor<Integer> countCaptor2 = ArgumentCaptor.forClass(Integer.class);
-        verify(client, atLeastOnce()).gauge(Matchers.matches("jvm\\.gc\\..*\\.timeInMS"), AdditionalMatchers.gt(0));
+        ArgumentCaptor<Long> countCaptor2 = ArgumentCaptor.forClass(Long.class);
+        verify(client, atLeastOnce()).gauge(Matchers.matches("jvm\\.gc\\..*\\.timeInMS"), AdditionalMatchers.gt(0L));
         verify(client, atLeastOnce()).gauge(Matchers.matches("jvm\\.gc\\..*\\.runs"), countCaptor2.capture());
         assertNotEquals(countCaptor1.getAllValues(), countCaptor2.getAllValues());
     }

@@ -19,8 +19,6 @@
 
 package com.github.lookout.metrics.agent;
 
-
-import com.timgroup.statsd.NonBlockingStatsDClient;
 import com.timgroup.statsd.StatsDClient;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.*;
@@ -153,7 +151,7 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
 
     @Override
     public void processCounter(MetricName name, Counter counter, Long epoch) throws Exception {
-        statsd.gauge(name.getName(), (int) counter.count());
+        statsd.gauge(name.getName(), counter.count());
     }
 
     @Override
@@ -168,6 +166,17 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
 
     @Override
     public void processGauge(MetricName name, Gauge<?> gauge, Long context) throws Exception {
-        statsd.gauge(name.getName(), gauge.hashCode());
+	    reportGaugeValue(name.getName(), gauge.value());
+    }
+    private void reportGaugeValue(String name, Object gaugeValue) {
+        if (gaugeValue instanceof Long) {
+	        statsd.gauge(name, ((Long) gaugeValue).longValue());
+        } else if (gaugeValue instanceof Double) {
+	        statsd.gauge(name, ((Double)gaugeValue).doubleValue());
+        } else if (gaugeValue instanceof Map) {
+            for (Map.Entry<?, ?> entry: ((Map<?,?>)gaugeValue).entrySet()) {
+                reportGaugeValue(name + "." + entry.getKey().toString(), entry.getValue());
+            }
+	    }
     }
 }

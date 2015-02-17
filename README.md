@@ -20,7 +20,7 @@ make sure pom.xml has <version>2.2.0</version>.
 
 Alternatively, grab the binary from bintray:
 
-`curl -L http://dl.bintray.com/lookout/systems/com/github/lookout/metrics/agent/1.0/agent-1.0.jar -o agent-1.0.jar`
+`curl -L http://dl.bintray.com/lookout/systems/com/github/lookout/metrics/agent/1.1/agent-1.1.jar -o agent-1.1.jar`
 
 INSTALL
 ----------------
@@ -28,12 +28,12 @@ INSTALL
 Copy the statsd library from the .m2 folder to cassandra/lib.
 Add the following to your cassandra startup script:
 
-Copy the agent-1.0.jar to a new directory cassandra/plugins
+Copy the agent-1.1.jar to a new directory cassandra/plugins
 
 Change cassandra startup to add this agent. This can be done in
 a stock install by adding the following to /etc/default/cassandra:
 
-`export JVM_OPTS="-javaagent:/usr/share/cassandra/plugins/agent-1.0.jar=localhost"`
+`export JVM_OPTS="-javaagent:/usr/share/cassandra/plugins/agent-1.1.jar=localhost"`
 
 Note the '=localhost' at the end. This supports the following syntaxes:
 `hostname:port@interval`
