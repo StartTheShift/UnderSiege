@@ -10,7 +10,10 @@ import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 public class ReportAgent {
-    public static void premain(final String agentArgs, final Instrumentation inst) throws IOException {
+
+    private static final long STARTUP_DELAY_MS = TimeUnit.SECONDS.toMillis(10);
+
+    public static void premain(final String agentArgs, final Instrumentation inst) {
         String host;
         try {
             host = InetAddress.getLocalHost().getHostName();
@@ -27,12 +30,8 @@ public class ReportAgent {
         }
     }
 
-    public static void main(final String[] args) {
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            // impossible
-        }
+    public static void main(final String[] args) throws InterruptedException {
+        Thread.sleep(STARTUP_DELAY_MS);
     }
 }
 
