@@ -51,6 +51,36 @@ confirm that everything is running, it looks like this:
 
 `INFO  [metrics-statsd-thread-1] 2014-12-19 19:05:37,120 StatsdReporter.java:65 - Statsd reporting to host localhost port 8125 every 10 seconds`
 
+WHAT GETS REPORTED
+------------------
+Lots of stuff:
+
+* Gossip statistics:
+    gossip.score.<IP>, which help decide who is closer/faster for queries
+    gossip.severity, which indicates how busy this node is self-reporting to others
+* Per table statistics:
+    cfstats.<keyspace>.<columnfamily>.ReadCount
+    cfstats.<keyspace>.<columnfamily>.WriteCount
+    cfstats.<keyspace>.<columnfamily>.RecentReadLatencyMicros
+    cfstats.<keyspace>.<columnfamily>.RecentWriteLatencyMicros
+    cfstats.<keyspace>.<columnfamily>.TombstonesPerSlice
+    cfstats.<keyspace>.<columnfamily>.estimatedKeys
+    The last one is great for monitoring general trends, but of course don't
+    rely on that number to be very accurate.
+* PHI reporter
+    Also supported is the currently-experimental PHI reporter, in PHI.<IP>,
+    coming to a Cassandra cluster near you soon.
+* JVM GC metrics
+* Anything else registered with yammer-metrics
+
+DEBUGGING
+----------------
+Not working? There's a lot of tracing and debugging available. Change the
+log4j-server.properties and add something like this to get extremely detailed
+traces of what it's doing in the server.log.
+
+`log4j.logger.com.github.lookout.metrics.agent.generators=TRACE`
+
 TODO
 ----------------
 Errors that happen during startup are not reported as well as they should

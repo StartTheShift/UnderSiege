@@ -11,8 +11,6 @@ import java.util.concurrent.TimeUnit;
 
 public class ReportAgent {
 
-    private static final long STARTUP_DELAY_MS = TimeUnit.SECONDS.toMillis(10);
-
     public static void premain(final String agentArgs, final Instrumentation inst) {
         String host;
         try {
@@ -28,10 +26,6 @@ public class ReportAgent {
             final StatsdReporter reporter = new StatsdReporter(hostPortInterval, client);
             reporter.start(hostPortInterval.getInterval(), TimeUnit.SECONDS);
         }
-    }
-
-    public static void main(final String[] args) throws InterruptedException {
-        Thread.sleep(STARTUP_DELAY_MS);
     }
 }
 
