@@ -19,6 +19,10 @@
 
 package com.github.lookout.metrics.agent;
 
+import com.github.lookout.metrics.agent.generators.CassandraJMXGenerator;
+import com.github.lookout.metrics.agent.generators.JavaVMGenerator;
+import com.github.lookout.metrics.agent.generators.MetricGenerator;
+import com.github.lookout.metrics.agent.generators.YammerMetricsGenerator;
 import com.timgroup.statsd.StatsDClient;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.*;
@@ -26,36 +30,31 @@ import com.yammer.metrics.reporting.AbstractPollingReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedMap;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-public class StatsdReporter extends AbstractPollingReporter implements MetricProcessor<Long> {
+public class StatsdReporter extends AbstractPollingReporter {
 
     private static final Logger LOG = LoggerFactory.getLogger(StatsdReporter.class);
 
-    protected final VirtualMachineMetrics vm;
+
     private final StatsDClient statsd;
-    protected final Clock clock;
-    private static final MetricPredicate predicate = MetricPredicate.ALL;
 
     private boolean reportedStartup = false;
     private final HostPortInterval hostPortInterval;
-    private final HashMap<String, Integer> previous_run_times;
-    private final HashMap<String, Integer> previous_run_counts;
+
+    private final Set<MetricGenerator> generators = new HashSet<>();
 
     public StatsdReporter(final HostPortInterval hostPortInterval, final StatsDClient statsd) {
         super(Metrics.defaultRegistry(), "statsd");
         this.hostPortInterval = hostPortInterval;
         this.statsd = statsd;
-        vm = VirtualMachineMetrics.getInstance();
-        clock = Clock.defaultClock();
-        previous_run_times = new HashMap<String, Integer>();
-        previous_run_counts = new HashMap<String, Integer>();
-    }
 
+        // This really should be done with an injection framework, but that's too heavy for this
+        generators.add(new CassandraJMXGenerator());
+        generators.add(new JavaVMGenerator());
+        generators.add(new YammerMetricsGenerator());
+    }
 
     @Override
     public void run() {
@@ -63,120 +62,16 @@ public class StatsdReporter extends AbstractPollingReporter implements MetricPro
             LOG.info("Statsd reporting to {}", hostPortInterval);
             reportedStartup = true;
         }
-        try {
-            final long epoch = clock.time() / 1000;
-            printMetrics(epoch);
-        } catch (Exception e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Error writing to statsd", e);
-            } else {
-                LOG.warn("Error writing to statsd: {}", e.getMessage());
-            }
-        }
-    }
-
-    private int bytesToMB(double bytes) {
-        return (int)(bytes/(1024*1024));
-    }
-    private int doubleToPct(double pct) {
-        return (int) Math.round(100 * pct);
-    }
-
-    protected void printMetrics(long epoch) {
-        // Memory
-        statsd.gauge("jvm.memory.totalInitInMB", bytesToMB(vm.totalInit()));
-        statsd.gauge("jvm.memory.totalUsedInMB", bytesToMB(vm.totalUsed()));
-        statsd.gauge("jvm.memory.heapUsedInMB", bytesToMB(vm.heapUsed()));
-
-        statsd.gauge("jvm.memory.heapUsagePercent", doubleToPct(vm.heapUsage()));
-
-        for (Map.Entry<String, Double> pool : vm.memoryPoolUsage().entrySet()) {
-            statsd.gauge("jvm.memory.memory_pool_usages." + pool.getKey() + "Percent", doubleToPct(pool.getValue()));
-        }
-
-        statsd.gauge("jvm.fdUsagePercent", doubleToPct(vm.fileDescriptorUsage()));
-
-        for (Map.Entry<String, VirtualMachineMetrics.GarbageCollectorStats> entry : vm.garbageCollectors().entrySet()) {
-            // we only care about the delta times for the GC time and GC runs
-
-            final String name = "jvm.gc." + entry.getKey();
-            String stat_name_time = name + ".timeInMS";
-
-            int total_run_time = (int) entry.getValue().getTime(TimeUnit.MILLISECONDS);
-            Integer previous_total_run_time = previous_run_times.get(stat_name_time);
-
-            if (previous_total_run_time == null) {
-                previous_total_run_time = 0;
-            }
-            int delta_run_time = total_run_time - previous_total_run_time;
-            previous_run_times.put(stat_name_time, total_run_time);
-
-            statsd.gauge(stat_name_time, delta_run_time);
-            String stat_run_count = name + ".runs";
-
-            int total_runs = (int) entry.getValue().getRuns();
-
-            Integer previous_total_runs = previous_run_counts.get(stat_run_count);
-
-            if (previous_total_runs == null) {
-                previous_total_runs = 0;
-            }
-
-            statsd.gauge(stat_run_count, total_runs - previous_total_runs);
-            previous_run_counts.put(stat_run_count, total_runs);
-        }
-
-        final Set<Map.Entry<String, SortedMap<MetricName, Metric>>> entries = getMetricsRegistry().groupedMetrics(predicate).entrySet();
-
-        for (final Map.Entry<String, SortedMap<MetricName, Metric>> entry : entries) {
-            for (final Map.Entry<MetricName, Metric> subEntry : entry.getValue().entrySet()) {
-
-                final Metric metric = subEntry.getValue();
-
-                if (metric != null) {
-                    try {
-                        metric.processWith(this, subEntry.getKey(), epoch);
-                    } catch (final Exception exception) {
-                        LOG.error("Error processing key {}", subEntry.getKey(), exception);
-                    }
+        for (MetricGenerator generator : generators) {
+            try {
+                generator.generate(statsd);
+            } catch (RuntimeException e) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Error writing to statsd", e);
+                } else {
+                    LOG.warn("Error writing to statsd: {}", e.getMessage());
                 }
             }
         }
-    }
-
-    @Override
-    public void processMeter(MetricName name, Metered meter, Long epoch) throws Exception {
-        LOG.debug("Meter {} {} skipped", name.getName(), meter.count());
-    }
-
-    @Override
-    public void processCounter(MetricName name, Counter counter, Long epoch) throws Exception {
-        statsd.gauge(name.getName(), counter.count());
-    }
-
-    @Override
-    public void processHistogram(MetricName name, Histogram histogram, Long epoch) throws Exception {
-        LOG.debug("Histogram {} mean {} skipped", name.getName(), histogram.mean());
-    }
-
-    @Override
-    public void processTimer(MetricName name, Timer timer, Long context) throws Exception {
-        LOG.debug("Timer {} skipped", name.getName());
-    }
-
-    @Override
-    public void processGauge(MetricName name, Gauge<?> gauge, Long context) throws Exception {
-	    reportGaugeValue(name.getName(), gauge.value());
-    }
-    private void reportGaugeValue(String name, Object gaugeValue) {
-        if (gaugeValue instanceof Long) {
-	        statsd.gauge(name, ((Long) gaugeValue).longValue());
-        } else if (gaugeValue instanceof Double) {
-	        statsd.gauge(name, ((Double)gaugeValue).doubleValue());
-        } else if (gaugeValue instanceof Map) {
-            for (Map.Entry<?, ?> entry: ((Map<?,?>)gaugeValue).entrySet()) {
-                reportGaugeValue(name + "." + entry.getKey().toString(), entry.getValue());
-            }
-	    }
     }
 }

@@ -10,7 +10,8 @@ import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 public class ReportAgent {
-    public static void premain(final String agentArgs, final Instrumentation inst) throws IOException {
+
+    public static void premain(final String agentArgs, final Instrumentation inst) {
         String host;
         try {
             host = InetAddress.getLocalHost().getHostName();
@@ -24,14 +25,6 @@ public class ReportAgent {
             final StatsDClient client = new NonBlockingStatsDClient(host, hostPortInterval.getHost(), hostPortInterval.getPort());
             final StatsdReporter reporter = new StatsdReporter(hostPortInterval, client);
             reporter.start(hostPortInterval.getInterval(), TimeUnit.SECONDS);
-        }
-    }
-
-    public static void main(final String[] args) {
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            // impossible
         }
     }
 }

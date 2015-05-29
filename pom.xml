@@ -5,7 +5,7 @@
     <groupId>com.github.lookout.metrics</groupId>
     <artifactId>agent</artifactId>
 
-    <version>1.1</version>
+    <version>1.2</version>
     <packaging>jar</packaging>
 
     <name>cassandra-statsd-reporter</name>

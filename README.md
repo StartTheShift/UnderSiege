@@ -20,7 +20,7 @@ make sure pom.xml has <version>2.2.0</version>.
 
 Alternatively, grab the binary from bintray:
 
-`curl -L http://dl.bintray.com/lookout/systems/com/github/lookout/metrics/agent/1.1/agent-1.1.jar -o agent-1.1.jar`
+`curl -L http://dl.bintray.com/lookout/systems/com/github/lookout/metrics/agent/1.2/agent-1.2.jar -o agent-1.2.jar`
 
 INSTALL
 ----------------
@@ -28,12 +28,12 @@ INSTALL
 Copy the statsd library from the .m2 folder to cassandra/lib.
 Add the following to your cassandra startup script:
 
-Copy the agent-1.1.jar to a new directory cassandra/plugins
+Copy the agent-1.2.jar to a new directory cassandra/plugins
 
 Change cassandra startup to add this agent. This can be done in
 a stock install by adding the following to /etc/default/cassandra:
 
-`export JVM_OPTS="-javaagent:/usr/share/cassandra/plugins/agent-1.1.jar=localhost"`
+`export JVM_OPTS="-javaagent:/usr/share/cassandra/plugins/agent-1.2.jar=localhost"`
 
 Note the '=localhost' at the end. This supports the following syntaxes:
 `hostname:port@interval`
@@ -50,6 +50,36 @@ A log message will be added to the system.log at startup to
 confirm that everything is running, it looks like this:
 
 `INFO  [metrics-statsd-thread-1] 2014-12-19 19:05:37,120 StatsdReporter.java:65 - Statsd reporting to host localhost port 8125 every 10 seconds`
+
+WHAT GETS REPORTED
+------------------
+Lots of stuff:
+
+* Gossip statistics:
+    gossip.score.<IP>, which help decide who is closer/faster for queries
+    gossip.severity, which indicates how busy this node is self-reporting to others
+* Per table statistics:
+    cfstats.<keyspace>.<columnfamily>.ReadCount
+    cfstats.<keyspace>.<columnfamily>.WriteCount
+    cfstats.<keyspace>.<columnfamily>.RecentReadLatencyMicros
+    cfstats.<keyspace>.<columnfamily>.RecentWriteLatencyMicros
+    cfstats.<keyspace>.<columnfamily>.TombstonesPerSlice
+    cfstats.<keyspace>.<columnfamily>.estimatedKeys
+    The last one is great for monitoring general trends, but of course don't
+    rely on that number to be very accurate.
+* PHI reporter
+    Also supported is the currently-experimental PHI reporter, in PHI.<IP>,
+    coming to a Cassandra cluster near you soon.
+* JVM GC metrics
+* Anything else registered with yammer-metrics
+
+DEBUGGING
+----------------
+Not working? There's a lot of tracing and debugging available. Change the
+log4j-server.properties and add something like this to get extremely detailed
+traces of what it's doing in the server.log.
+
+`log4j.logger.com.github.lookout.metrics.agent.generators=TRACE`
 
 TODO
 ----------------
