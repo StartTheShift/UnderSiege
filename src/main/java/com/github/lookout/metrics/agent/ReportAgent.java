@@ -12,17 +12,12 @@ import java.util.concurrent.TimeUnit;
 public class ReportAgent {
 
     public static void premain(final String agentArgs, final Instrumentation inst) {
-        String host;
-        try {
-            host = InetAddress.getLocalHost().getHostName();
-        } catch (UnknownHostException e) {
-            host = "unknown-host";
-        }
+        final String prefix = "cassandra";
 
         final String[] reportingHostPorts = (agentArgs != null) ? agentArgs.split(",") : new String[]{null};
         for (final String reportingHostPort : reportingHostPorts) {
             final HostPortInterval hostPortInterval = new HostPortInterval(reportingHostPort);
-            final StatsDClient client = new NonBlockingStatsDClient(host, hostPortInterval.getHost(), hostPortInterval.getPort());
+            final StatsDClient client = new NonBlockingStatsDClient(prefix, hostPortInterval.getHost(), hostPortInterval.getPort());
             final StatsdReporter reporter = new StatsdReporter(hostPortInterval, client);
             reporter.start(hostPortInterval.getInterval(), TimeUnit.SECONDS);
         }
